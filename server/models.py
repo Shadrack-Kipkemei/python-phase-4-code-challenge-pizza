@@ -64,6 +64,10 @@ class RestaurantPizza(db.Model, SerializerMixin):
     serialize_rules = ('-restaurant', '-pizza')
 
     # add validation
+    def validate_price(self, key, value):
+        if not (1 <= value <= 30):
+            raise ValueError('Price must be between 1 and 30')
+        return value 
 
     def __repr__(self):
         return f"<RestaurantPizza ${self.price}>"
