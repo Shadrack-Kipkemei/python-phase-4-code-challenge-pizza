@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from models import db, Restaurant, RestaurantPizza, Pizza
 from flask_migrate import Migrate
-from flask import Flask, request, make_response, jsonify
-from flask_restful import Api, Resource
+from flask import Flask, request, jsonify
+from flask_restful import Api
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -14,21 +14,21 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.json.compact = False
 
 migrate = Migrate(app, db)
-
 db.init_app(app)
-
 api = Api(app)
 
 
 @app.route("/")
 def index():
-    return "<h1>Code challenge</h1>"
+    return "<h1>Code Challenge</h1>"
 
-# GET / restaurants
+
+# GET /restaurants
 @app.route('/restaurants', methods=['GET'])
 def get_restaurants():
     restaurants = Restaurant.query.all()
     return jsonify([restaurant.to_dict() for restaurant in restaurants])
+
 
 # GET /restaurants/<int:id>
 @app.route('/restaurants/<int:id>', methods=['GET'])
@@ -37,7 +37,6 @@ def get_restaurant_by_id(id):
     if not restaurant:
         return jsonify({"error": "Restaurant not found"}), 404
 
-    # Get the restaurant's pizzas
     restaurant_data = restaurant.to_dict()
     restaurant_pizzas = [
         {
@@ -45,12 +44,11 @@ def get_restaurant_by_id(id):
             "pizza": rp.pizza.to_dict(),
             "pizza_id": rp.pizza_id,
             "price": rp.price,
-            "restaurant_id": rp.restaurant_id 
+            "restaurant_id": rp.restaurant_id
         }
         for rp in restaurant.pizzas
     ]
-    restaurant_data["restaurant_pizzas"] = restaurant_pizzas 
-
+    restaurant_data["restaurant_pizzas"] = restaurant_pizzas
     return jsonify(restaurant_data)
 
 
@@ -61,21 +59,26 @@ def delete_restaurant(id):
     if not restaurant:
         return jsonify({"error": "Restaurant not found"}), 404
 
-    # Delete the associated restaurant pizzas
-    for rp in restaurant.pizzas:
-        db.session.delete(rp)
-
-    # Delete the restaurant
     db.session.delete(restaurant)
     db.session.commit()
-
     return '', 204
+
 
 # GET /pizzas
 @app.route('/pizzas', methods=['GET'])
 def get_pizzas():
     pizzas = Pizza.query.all()
     return jsonify([pizza.to_dict() for pizza in pizzas])
+
+
+# GET /pizzas/<int:id>
+@app.route('/pizzas/<int:id>', methods=['GET'])
+def get_pizza_by_id(id):
+    pizza = Pizza.query.get(id)
+    if not pizza:
+        return jsonify({"error": "Pizza not found"}), 404
+    return jsonify(pizza.to_dict())
+
 
 # POST /restaurant_pizzas
 @app.route('/restaurant_pizzas', methods=['POST'])
@@ -95,21 +98,21 @@ def create_restaurant_pizza():
     if not pizza or not restaurant:
         return jsonify({"errors": ["validation errors"]}), 400
 
+    # Create the new RestaurantPizza
     try:
-        # Create the new RestaurantPizza
-        restaurant_pizza = RestaurantPizza(price=price, pizza_id=pizza_id, restaurant_id=restaurant_id)
+        restaurant_pizza = RestaurantPizza(
+            price=price, pizza_id=pizza_id, restaurant_id=restaurant_id
+        )
         db.session.add(restaurant_pizza)
         db.session.commit()
 
-        # Return the created RestaurantPizza with associated data
         response_data = restaurant_pizza.to_dict()
         response_data["pizza"] = pizza.to_dict()
         response_data["restaurant"] = restaurant.to_dict()
         return jsonify(response_data), 201
-
     except Exception as e:
-        # Handle unexpected errors (e.g., database errors)
-        return jsonify({"errors": ["validation errors"]}), 400
+        return jsonify({"errors": ["Validation errors"]}), 400
+
 
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
